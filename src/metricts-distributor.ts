@@ -78,7 +78,10 @@ export class MetricsDistributor {
 		// eslint-disable-next-line no-constant-condition
 		while (true) {
 			if (!work?.is_active) {
-				work = await this.knex<Work>("works").insert({});
+				await this.knex<Work>("works").insert({});
+				[work] = await this.knex<Work>("works")
+					.select("*")
+					.where("is_active", true);
 			}
 
 			const count = await this.fetchMetrics(50, work.offset);
