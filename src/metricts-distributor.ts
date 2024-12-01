@@ -83,6 +83,7 @@ export class MetricsDistributor {
 					.select("*")
 					.where("is_active", true);
 			}
+			work.offset = Number(work.offset);
 
 			const count = await this.fetchMetrics(50, work.offset);
 			work.offset += 50;
