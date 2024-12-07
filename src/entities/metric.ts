@@ -29,7 +29,7 @@ export const buildMetricSchema = async (knex: Knex) => {
 
 	if (!(await knex.schema.hasTable("metrics"))) {
 		await knex.schema.createTableIfNotExists("metrics", table => {
-			table.string("username", 256).notNullable().unique().primary();
+			table.string("username", 256).notNullable().primary();
 			table.tinyint("err_percentage").unsigned();
 			table.tinyint("quote_index").unsigned();
 			table.bigint("participants_count").unsigned();
@@ -40,6 +40,12 @@ export const buildMetricSchema = async (knex: Knex) => {
 			table
 				.timestamp("created_at", { useTz: true })
 				.defaultTo(knex.fn.now());
+
+			table
+				.foreign("username")
+				.references("url_parse")
+				.inTable("add")
+				.onDelete("CASCADE");
 		});
 	}
 
