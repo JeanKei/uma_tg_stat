@@ -11,12 +11,12 @@ export class MetricsDistributor {
 	) {}
 
 	private async fetchMetrics(limit: number, offset: number) {
-		const channels = await this.knex<{ url: string }>("add")
-			.select("url")
+		const channels = await this.knex<{ url_parse: string }>("add")
+			.select("url_parse")
 			.limit(limit)
 			.offset(offset);
 
-		for (const { url } of channels) {
+		for (const { url_parse: url } of channels) {
 			if (url.startsWith("+")) {
 				continue;
 			}
