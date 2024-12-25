@@ -1,6 +1,6 @@
 {
   "name": "tg-stat-scrapper",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
@@ -22,13 +22,15 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "dayjs": "^1.11.13",
     "dotenv": "^16.4.5",
     "env-var": "^7.5.0",
-    "knex": "^3.1.0",
     "pg": "^8.13.1",
     "proxy-chain": "^2.5.5",
     "puppeteer": "^23.9.0",
     "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "typeorm": "^0.3.20",
+    "typeorm-naming-strategies": "^4.1.0"
   }
 }

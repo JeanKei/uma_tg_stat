@@ -1,9 +1,17 @@
 import puppeteer from "puppeteer-extra";
 import { Server } from "proxy-chain";
-import { RawMetric } from "./types/raw-metric";
 import { Page } from "puppeteer";
+import { GeneralParser } from "./parsers/general-parser";
+import { logParseResults } from "./logging-utils";
+import { ChannelParser } from "./parsers/channel-parser";
+import { ChatParser } from "./parsers/chat-parser";
+import { ParserResult } from "./types/parser-result";
 
 export class TgStatParser {
+	private readonly generalParser = new GeneralParser();
+	private readonly chatParser = new ChatParser();
+	private readonly channelParser = new ChannelParser();
+
 	private readonly browser = puppeteer
 		.use(require("puppeteer-extra-plugin-stealth")())
 		.launch({
@@ -29,13 +37,7 @@ export class TgStatParser {
 	}
 
 	private async handlePage(page: Page, link: string, attempt = 1) {
-		page.goto(`https://tgstat.ru/channel/${link}/stat`)
-			.then(body => {
-				if (body.status() !== 200) {
-					throw new Error("Not found");
-				}
-			})
-			.catch(() => {});
+		page.goto(`https://tgstat.ru/channel/${link}/stat`).catch(() => {});
 		try {
 			await page.waitForSelector(
 				"#sticky-center-column > div > div > div:nth-child(1) > div > h2",
@@ -62,82 +64,48 @@ export class TgStatParser {
 				page,
 				link,
 				attempt + 1
-			)) as RawMetric;
+			)) as ParserResult;
 		}
 
 		console.log(`[parser] ${link}: page loaded`);
-
-		const participantsCount = await page.evaluate(() => {
-			return Number(
-				Array.from(document.querySelectorAll("div"))
-					.filter(e => /подписчики/i.test(e.innerText))
-					.at(-1)
-					.parentElement.querySelector("h2")
-					.innerText?.replace(/[^\d]+/g, "")
-			);
-		});
-		if (Number.isNaN(participantsCount)) {
-			console.log(
-				`[parser] ${link}: couldn't parse participantsCount: ${participantsCount}`
-			);
-		}
-
-		const averagePostReach = await page.evaluate(() => {
-			return Number(
-				Array.from(document.querySelectorAll("div"))
-					.filter(e => /средний охват/i.test(e.innerText))
-					.at(-1)
-					.parentElement?.parentElement?.querySelector("h2")
-					?.innerText?.replace(/[^\d]+/g, "")
-			);
-		});
-		if (Number.isNaN(averagePostReach)) {
-			console.log(
-				`[parser] ${link}: couldn't parse averagePostReach: ${averagePostReach}`
-			);
-		}
-
-		const errPercentage = await page.evaluate(() => {
-			return Number(
-				Array.from(document.querySelectorAll("div"))
-					.filter(e => /вовлеченность/i.test(e.innerText))
-					.at(-1)
-					.parentElement?.parentElement?.querySelector("h2 span")
-					?.textContent?.replace(/[^\d.]+/g, "")
-			);
-		});
-		if (Number.isNaN(errPercentage)) {
-			console.log(
-				`[parser] ${link}: couldn't parse errPercentage: ${errPercentage}`
-			);
-		}
-
-		const quoteIndexPercentage = await page.evaluate(() => {
-			return Number(
-				Array.from(document.querySelectorAll("div"))
-					.filter(e => /индекс цитирования/i.test(e.innerText))
-					.at(-1)
-					.parentElement?.parentElement?.querySelector("h2")
-					?.textContent?.replace(/[^\d.]+/g, "")
-			);
-		});
-		if (Number.isNaN(quoteIndexPercentage)) {
-			console.log(
-				`[parser] ${link}: couldn't parse quoteIndexPercentage: ${quoteIndexPercentage}`
-			);
-		}
-
-		await page.close();
-
-		console.log(
-			`[parser] ${link}: parsing finished, ${participantsCount} ${averagePostReach} ${errPercentage} ${quoteIndexPercentage}`
+		console.log(`[parser] ${link}: parsing general info...`);
+		const general = await this.generalParser.parse(
+			page.evaluate.bind(page)
 		);
-		return {
-			participantsCount,
-			averagePostReach,
-			errPercentage,
-			quoteIndex: quoteIndexPercentage,
-		} as RawMetric;
+		logParseResults(general, `[parser] ${link}: general info parsed`, [
+			"username",
+			"createdAt",
+			"updatedAt",
+		]);
+		general.username = link;
+
+		const isChat = page.url().startsWith("https://tgstat.ru/chat");
+
+		if (isChat) {
+			console.log(`[parser] ${link}: parsing chat info...`);
+			const chat = await this.chatParser.parse(page.evaluate.bind(page));
+			logParseResults(chat, `[parser] ${link}: chat info parsed`, [
+				"username",
+				"createdAt",
+				"updatedAt",
+			]);
+			chat.username = link;
+
+			return { general, chat };
+		} else {
+			console.log(`[parser] ${link}: parsing channel info...`);
+			const channel = await this.channelParser.parse(
+				page.evaluate.bind(page)
+			);
+			logParseResults(channel, `[parser] ${link}: channel info parsed`, [
+				"username",
+				"createdAt",
+				"updatedAt",
+			]);
+			channel.username = link;
+
+			return { general, channel };
+		}
 	}
 
 	async parse(link: string) {
@@ -147,8 +115,10 @@ export class TgStatParser {
 		try {
 			return await this.handlePage(page, link.trim());
 		} catch (err) {
-			await page.close();
+			console.error(`[parser] caught error`, err);
 			return null;
+		} finally {
+			await page.close();
 		}
 	}
 }

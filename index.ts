@@ -2,17 +2,17 @@ import { get } from "env-var";
 import { config } from "dotenv";
 import { TgStatParser } from "./src/tgstat-parser";
 import { MetricsDistributor } from "./src/metricts-distributor";
-import { knex } from "./src/knex";
-import { buildMetricSchema } from "./src/entities/metric";
-import { buildWorkSchema } from "./src/entities/work";
+import { dataSource } from "./src/typeorm";
 config();
 
 export async function run() {
-	await buildMetricSchema(knex);
-	await buildWorkSchema(knex);
+	await dataSource.initialize();
 	const tgStatParser = new TgStatParser(get("PROXY").asArray(", "));
 
-	const metricsDistributor = new MetricsDistributor(knex, tgStatParser);
+	const metricsDistributor = new MetricsDistributor(
+		dataSource.createEntityManager(),
+		tgStatParser
+	);
 	await metricsDistributor.start();
 }
 
