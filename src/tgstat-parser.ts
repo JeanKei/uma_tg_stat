@@ -2,7 +2,7 @@ import puppeteer from "puppeteer-extra";
 import { Server } from "proxy-chain";
 import { Page } from "puppeteer";
 import { GeneralParser } from "./parsers/general-parser";
-import { logParseResults } from "./logging-utils";
+import { logParseResults } from "./utils";
 import { ChannelParser } from "./parsers/channel-parser";
 import { ChatParser } from "./parsers/chat-parser";
 import { ParserResult } from "./types/parser-result";

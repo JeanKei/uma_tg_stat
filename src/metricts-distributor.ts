@@ -5,6 +5,7 @@ import { GeneralMetric } from "./entities/general-metric";
 import { ChatMetric } from "./entities/chat-metric";
 import { ChannelMetric } from "./entities/channel-metric";
 import { Progress } from "./entities/progress";
+import { omitNaN } from "./utils";
 
 export class MetricsDistributor {
 	constructor(
@@ -41,16 +42,20 @@ export class MetricsDistributor {
 				if (parseResult.general) {
 					await this.entityManager.save(
 						GeneralMetric,
-						parseResult.general
+						omitNaN(parseResult.general)
 					);
 				}
+
 				if ("chat" in parseResult && parseResult.chat) {
-					await this.entityManager.save(ChatMetric, parseResult.chat);
+					await this.entityManager.save(
+						ChatMetric,
+						omitNaN(parseResult.chat)
+					);
 				}
 				if ("channel" in parseResult && parseResult.channel) {
 					await this.entityManager.save(
 						ChannelMetric,
-						parseResult.channel
+						omitNaN(parseResult.channel)
 					);
 				}
 			} catch (err) {
